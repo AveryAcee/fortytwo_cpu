@@ -24,7 +24,7 @@ else
     MEMORY_TYPE="RAM"
     echo "    ⚠ No NVIDIA GPU found. Running in CPU-only mode."
 fi
-fi
+
 PROJECT_DIR="./FortytwoNode"
 PROJECT_DEBUG_DIR="$PROJECT_DIR/debug"
 PROJECT_MODEL_CACHE_DIR="$PROJECT_DIR/model_cache"
