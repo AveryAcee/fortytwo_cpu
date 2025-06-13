@@ -431,22 +431,24 @@ startup() {
     "$CAPSULE_EXEC" --llm-hf-repo "$LLM_HF_REPO" --llm-hf-model-name "$LLM_HF_MODEL_NAME" --model-cache "$PROJECT_MODEL_CACHE_DIR" > "$CAPSULE_LOGS" 2>&1 &
     CAPSULE_PID=$!
 
-    animate_text "Be patient, it may take some time..."
+    animate_text "Be patient, it may take some time."
     while true; do
-        if ! kill -0 "$CAPSULE_PID" 2>/dev/null; then
-            echo -e "\033[0;31mCapsule process exited unexpectedly (PID: $CAPSULE_PID)\033[0m"
-            [ -f "$CAPSULE_LOGS" ] && tail -n 10 "$CAPSULE_LOGS"
-            exit 1
-        fi
-
         STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$CAPSULE_READY_URL")
         if [[ "$STATUS_CODE" == "200" ]]; then
             animate_text "Capsule is ready."
             break
+        else
+            # Capsule is not ready. Retrying in 5 seconds...
+            sleep 5
         fi
-        sleep 5
+        if ! kill -0 "$CAPSULE_PID" 2>/dev/null; then
+            echo -e "\033[0;31mCapsule process exited (PID: $CAPSULE_PID)\033[0m"
+            if [[ -f "$CAPSULE_LOGS" ]]; then
+                tail -n 1 "$CAPSULE_LOGS"
+        fi
+            exit 1
+        fi
     done
-
     animate_text "⏃ Starting Protocol..."
     echo
     animate_text "Joining ::||"
@@ -457,40 +459,36 @@ startup() {
 
 cleanup() {
     echo
+    capsule_stopped=$(kill -0 "$CAPSULE_PID" 2>/dev/null && kill "$CAPSULE_PID" 2>/dev/null && echo true || echo false)
+    [ "$capsule_stopped" = true ] && animate_text "⎔ Stopping capsule..."
 
-    if kill -0 "$CAPSULE_PID" 2>/dev/null; then
-        kill "$CAPSULE_PID" 2>/dev/null
-        animate_text "⎔ Stopping capsule..."
+    protocol_stopped=$(kill -0 "$PROTOCOL_PID" 2>/dev/null && kill "$PROTOCOL_PID" 2>/dev/null && echo true || echo false)
+    [ "$protocol_stopped" = true ] && animate_text "⏃ Stopping protocol..."
+
+    if [ "$capsule_stopped" = true ] || [ "$protocol_stopped" = true ]; then
+        animate_text "Processes stopped"
+        animate_text "Bye, Noderunner"
     fi
-
-    if kill -0 "$PROTOCOL_PID" 2>/dev/null; then
-        kill "$PROTOCOL_PID" 2>/dev/null
-        animate_text "⏃ Stopping protocol..."
-    fi
-
-    animate_text "Processes stopped"
-    animate_text "Bye, Noderunner"
     exit 0
 }
 
-trap cleanup SIGINT SIGTERM SIGHUP EXIT
 startup
+trap cleanup SIGINT SIGTERM SIGHUP EXIT
 
 while true; do
     IS_ALIVE="true"
-
     if ! ps -p "$CAPSULE_PID" > /dev/null; then
-        echo "Capsule has stopped."
+        echo "Capsule has stopped. Restarting..."
         IS_ALIVE="false"
     fi
 
     if ! ps -p "$PROTOCOL_PID" > /dev/null; then
-        echo "Protocol has stopped."
+        echo "Node has stopped. Restarting..."
         IS_ALIVE="false"
     fi
 
-    if [[ "$IS_ALIVE" == "false" ]]; then
-        echo "Restarting components..."
+    if [[ $IS_ALIVE == "false" ]]; then
+        echo "Capsule or Protocol process has stopped. Restarting..."
         kill "$CAPSULE_PID" 2>/dev/null
         kill "$PROTOCOL_PID" 2>/dev/null
         startup
