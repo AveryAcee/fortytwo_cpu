@@ -19,68 +19,11 @@ animate_text_x2() {
 
 auto_select_model() {
     if command -v nvidia-smi &> /dev/null; then
-        AVAILABLE_MEM=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | head -n 1 | awk '{print $1 / 1024}')
-    else
-        AVAILABLE_MEM=$(awk '/MemTotal/ {print $2 / 1024 / 1024}' /proc/meminfo)
-    fi
-    animate_text "    ↳ System analysis: ${AVAILABLE_MEM}GB ${MEMORY_TYPE} detected"
-
-    AVAILABLE_MEM_INT=$(printf "%.0f" "$AVAILABLE_MEM")
-
-    if [ "$AVAILABLE_MEM_INT" -ge 22 ]; then
-        animate_text "    🜲 Recommending: ⬢ 3 Qwen3 for problem solving & logical reasoning"
-        LLM_HF_REPO="unsloth/Qwen3-30B-A3B-GGUF"
-        LLM_HF_MODEL_NAME="Qwen3-30B-A3B-Q4_K_M.gguf"
-        NODE_NAME="Qwen3 30B A3B Q4"
-    elif [ "$AVAILABLE_MEM_INT" -ge 15 ]; then
-        animate_text "    🜲 Recommending: ⬢ 8 Qwen3 14B for high-precision logical analysis"
-        LLM_HF_REPO="unsloth/Qwen3-14B-GGUF"
-        LLM_HF_MODEL_NAME="Qwen3-14B-Q4_K_M.gguf"
-        NODE_NAME="Qwen3 14B Q4"
-    elif [ "$AVAILABLE_MEM_INT" -ge 7 ]; then
-        animate_text "    🜲 Recommending: ⬢ 7 Qwen3 8B for balanced capability"
-        LLM_HF_REPO="unsloth/Qwen3-8B-GGUF"
-        LLM_HF_MODEL_NAME="Qwen3-8B-Q4_K_M.gguf"
-        NODE_NAME="Qwen3 8B Q4"
-    else
-        animate_text "    🜲 Recommending: ⬢ 16 Qwen 3 1.7B optimized for efficiency"
-        LLM_HF_REPO="unsloth/Qwen3-1.7B-GGUF"
-        LLM_HF_MODEL_NAME="Qwen3-1.7B-Q4_K_M.gguf"
-        NODE_NAME="Qwen 3 1.7B Q4"
-    fi
-}
-
-BANNER="
-   ▒█████░      ▒█████░    █████████░  █████████░
-  ▓███████▓    ▓███████▓   █████████░  █████████░
- ░█████████░  ░█████████░  █████████░  █████████░
-  ▓███████▓    ▓███████▓   █████████░  █████████░
-   ▒█████░      ▒█████░    █████████░  █████████░
-                           █████████░  █████████░
-   ▒█████░      ▒█████░    █████████░  █████████░
-  ▓███████▓    ▓███████▓   █████████░  █████████░
- ░█████████░  ░█████████░  █████████░  █████████░
-  ▓███████▓    ▓███████▓   █████████░  █████████░
-   ▒█████░      ▒█████░    █████████░  █████████░
-"
-BANNER_FULLNAME="
-
- ▒██  ░█▓░  ▒███  ▒███   ▒█████▒             █▓           ▒▓
-████░ ████░ ▒███  ▒███   ▒█▒     ▒▓░▒  ▒██▓░▓██▒▒▓▓   ▓▒▒███▓░█▓  █▓  ▓█  ▒▓░▒
- ▒▓░   ▒▓░  ▒███  ▒███   ▒████▒ ▒█  ▓█ ██▒ ░ ██░  █▓  ▓█░ ██  ██ ▓▓█  ██ ▒█  ▓█
- ░▓▓   ░▓▓  ▒███  ▒███   ▒█░    █▓  █▓ ▓█    █▒   ▒█▒█▓   █▓  ░█▒█▒██▒█▓ █▓  █▓
-████░ ████░ ▒███  ▒███   ▒█░    ▒█  ▓█ ██    █▓    ▓██░   ██   ███ ▒██▒  ▒█  ▓█
- ▒██   ░▓▒  ▒███  ▒███   ▒█░     ░▒▓░  █▓    ░░▓▒   ▓█░   ▒░▓▒  █▒  █▒░   ░▓▓░
-                                                 ░░█▓
-"
-animate_text_x2 "$BANNER"
-animate_text "      Welcome to ::|| Fortytwo, Noderunner."
-echo
-if command -v nvidia-smi &> /dev/null; then
     MEMORY_TYPE="VRAM"
 else
     MEMORY_TYPE="RAM"
     echo "    ⚠ No NVIDIA GPU found. Running in CPU-only mode."
+fi
 fi
 PROJECT_DIR="./FortytwoNode"
 PROJECT_DEBUG_DIR="$PROJECT_DIR/debug"
