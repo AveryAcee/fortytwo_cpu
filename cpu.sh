@@ -431,24 +431,22 @@ startup() {
     "$CAPSULE_EXEC" --llm-hf-repo "$LLM_HF_REPO" --llm-hf-model-name "$LLM_HF_MODEL_NAME" --model-cache "$PROJECT_MODEL_CACHE_DIR" > "$CAPSULE_LOGS" 2>&1 &
     CAPSULE_PID=$!
 
-    animate_text "Be patient, it may take some time."
+    animate_text "Be patient, it may take some time..."
     while true; do
+        if ! kill -0 "$CAPSULE_PID" 2>/dev/null; then
+            echo -e "\033[0;31mCapsule process exited unexpectedly (PID: $CAPSULE_PID)\033[0m"
+            [ -f "$CAPSULE_LOGS" ] && tail -n 10 "$CAPSULE_LOGS"
+            exit 1
+        fi
+
         STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$CAPSULE_READY_URL")
         if [[ "$STATUS_CODE" == "200" ]]; then
             animate_text "Capsule is ready."
             break
-        else
-            # Capsule is not ready. Retrying in 5 seconds...
-            sleep 5
         fi
-        if ! kill -0 "$CAPSULE_PID" 2>/dev/null; then
-            echo -e "\033[0;31mCapsule process exited (PID: $CAPSULE_PID)\033[0m"
-            if [[ -f "$CAPSULE_LOGS" ]]; then
-                tail -n 1 "$CAPSULE_LOGS"
-        fi
-            exit 1
-        fi
+        sleep 5
     done
+
     animate_text "⏃ Starting Protocol..."
     echo
     animate_text "Joining ::||"
@@ -475,21 +473,24 @@ cleanup() {
     exit 0
 }
 
+trap cleanup SIGINT SIGTERM SIGHUP EXIT
+startup
 
 while true; do
     IS_ALIVE="true"
+
     if ! ps -p "$CAPSULE_PID" > /dev/null; then
-        echo "Capsule has stopped. Restarting..."
+        echo "Capsule has stopped."
         IS_ALIVE="false"
     fi
 
     if ! ps -p "$PROTOCOL_PID" > /dev/null; then
-        echo "Node has stopped. Restarting..."
+        echo "Protocol has stopped."
         IS_ALIVE="false"
     fi
 
-    if [[ $IS_ALIVE == "false" ]]; then
-        echo "Capsule or Protocol process has stopped. Restarting..."
+    if [[ "$IS_ALIVE" == "false" ]]; then
+        echo "Restarting components..."
         kill "$CAPSULE_PID" 2>/dev/null
         kill "$PROTOCOL_PID" 2>/dev/null
         startup
