@@ -459,21 +459,22 @@ startup() {
 
 cleanup() {
     echo
-    capsule_stopped=$(kill -0 "$CAPSULE_PID" 2>/dev/null && kill "$CAPSULE_PID" 2>/dev/null && echo true || echo false)
-    [ "$capsule_stopped" = true ] && animate_text "⎔ Stopping capsule..."
 
-    protocol_stopped=$(kill -0 "$PROTOCOL_PID" 2>/dev/null && kill "$PROTOCOL_PID" 2>/dev/null && echo true || echo false)
-    [ "$protocol_stopped" = true ] && animate_text "⏃ Stopping protocol..."
-
-    if [ "$capsule_stopped" = true ] || [ "$protocol_stopped" = true ]; then
-        animate_text "Processes stopped"
-        animate_text "Bye, Noderunner"
+    if kill -0 "$CAPSULE_PID" 2>/dev/null; then
+        kill "$CAPSULE_PID" 2>/dev/null
+        animate_text "⎔ Stopping capsule..."
     fi
+
+    if kill -0 "$PROTOCOL_PID" 2>/dev/null; then
+        kill "$PROTOCOL_PID" 2>/dev/null
+        animate_text "⏃ Stopping protocol..."
+    fi
+
+    animate_text "Processes stopped"
+    animate_text "Bye, Noderunner"
     exit 0
 }
 
-startup
-trap cleanup SIGINT SIGTERM SIGHUP EXIT
 
 while true; do
     IS_ALIVE="true"
