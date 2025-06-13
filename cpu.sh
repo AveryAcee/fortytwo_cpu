@@ -17,7 +17,7 @@ animate_text_x2() {
     echo
 }
 
-auto_select_model() {
+auto_select_model() 
     if command -v nvidia-smi &> /dev/null; then
     MEMORY_TYPE="VRAM"
 else
