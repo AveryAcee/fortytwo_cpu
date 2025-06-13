@@ -422,48 +422,76 @@ echo
 animate_text "    ↳ Downloading the model and preparing the environment may take several minutes..."
 "$UTILS_EXEC" --hf-repo "$LLM_HF_REPO" --hf-model-name "$LLM_HF_MODEL_NAME" --model-cache "$PROJECT_MODEL_CACHE_DIR"
 echo
-animate_text "Setup completed."
-clear
-echo "$BANNER"
-animate_text "Starting Capsule.."
-"$CAPSULE_EXEC" --llm-hf-repo "$LLM_HF_REPO" --llm-hf-model-name "$LLM_HF_MODEL_NAME" > "$CAPSULE_LOGS" 2>&1 &
-CAPSULE_PID=$!
+animate_text "Setup completed. Ready to launch."
+# clear
+animate_text_x2 "$BANNER_FULLNAME"
 
-animate_text "Be patient during the first launch of the capsule; it will take some time."
-while true; do
-    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$CAPSULE_READY_URL")
-    if [[ "$STATUS_CODE" == "200" ]]; then
-        animate_text "Capsule is ready!"
-        break
-    else
-        # Capsule is not ready. Retrying in 5 seconds...
-        sleep 5
-    fi
-done
-animate_text "Starting Protocol.."
-"$PROTOCOL_EXEC" --account-private-key "$ACCOUNT_PRIVATE_KEY" --db-folder "$PROTOCOL_DB_DIR" &
-PROTOCOL_PID=$!
+startup() {
+    animate_text "⎔ Starting Capsule..."
+    "$CAPSULE_EXEC" --llm-hf-repo "$LLM_HF_REPO" --llm-hf-model-name "$LLM_HF_MODEL_NAME" --model-cache "$PROJECT_MODEL_CACHE_DIR" > "$CAPSULE_LOGS" 2>&1 &
+    CAPSULE_PID=$!
+
+    animate_text "Be patient, it may take some time."
+    while true; do
+        STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$CAPSULE_READY_URL")
+        if [[ "$STATUS_CODE" == "200" ]]; then
+            animate_text "Capsule is ready."
+            break
+        else
+            # Capsule is not ready. Retrying in 5 seconds...
+            sleep 5
+        fi
+        if ! kill -0 "$CAPSULE_PID" 2>/dev/null; then
+            echo -e "\033[0;31mCapsule process exited (PID: $CAPSULE_PID)\033[0m"
+            if [[ -f "$CAPSULE_LOGS" ]]; then
+                tail -n 1 "$CAPSULE_LOGS"
+        fi
+            exit 1
+        fi
+    done
+    animate_text "⏃ Starting Protocol..."
+    echo
+    animate_text "Joining ::||"
+    echo
+    "$PROTOCOL_EXEC" --account-private-key "$ACCOUNT_PRIVATE_KEY" --db-folder "$PROTOCOL_DB_DIR" &
+    PROTOCOL_PID=$!
+}
 
 cleanup() {
-    animate_text "Stopping capsule..."
-    kill "$CAPSULE_PID" 2>/dev/null
-    animate_text "Stopping protocol..."
-    kill "$PROTOCOL_PID" 2>/dev/null
-    animate_text "Processes stopped. Exiting."
+    echo
+    capsule_stopped=$(kill -0 "$CAPSULE_PID" 2>/dev/null && kill "$CAPSULE_PID" 2>/dev/null && echo true || echo false)
+    [ "$capsule_stopped" = true ] && animate_text "⎔ Stopping capsule..."
+
+    protocol_stopped=$(kill -0 "$PROTOCOL_PID" 2>/dev/null && kill "$PROTOCOL_PID" 2>/dev/null && echo true || echo false)
+    [ "$protocol_stopped" = true ] && animate_text "⏃ Stopping protocol..."
+
+    if [ "$capsule_stopped" = true ] || [ "$protocol_stopped" = true ]; then
+        animate_text "Processes stopped"
+        animate_text "Bye, Noderunner"
+    fi
     exit 0
 }
 
+startup
 trap cleanup SIGINT SIGTERM SIGHUP EXIT
 
 while true; do
+    IS_ALIVE="true"
     if ! ps -p "$CAPSULE_PID" > /dev/null; then
-        animate_text "Capsule has stopped."
-        exit 1
+        echo "Capsule has stopped. Restarting..."
+        IS_ALIVE="false"
     fi
 
     if ! ps -p "$PROTOCOL_PID" > /dev/null; then
-        animate_text "Node has stopped."
-        exit 1
+        echo "Node has stopped. Restarting..."
+        IS_ALIVE="false"
+    fi
+
+    if [[ $IS_ALIVE == "false" ]]; then
+        echo "Capsule or Protocol process has stopped. Restarting..."
+        kill "$CAPSULE_PID" 2>/dev/null
+        kill "$PROTOCOL_PID" 2>/dev/null
+        startup
     fi
 
     sleep 5
