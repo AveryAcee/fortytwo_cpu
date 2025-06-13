@@ -76,6 +76,12 @@ BANNER_FULLNAME="
 animate_text_x2 "$BANNER"
 animate_text "      Welcome to ::|| Fortytwo, Noderunner."
 echo
+if command -v nvidia-smi &> /dev/null; then
+    MEMORY_TYPE="VRAM"
+else
+    MEMORY_TYPE="RAM"
+    echo "    ⚠ No NVIDIA GPU found. Running in CPU-only mode."
+fi
 PROJECT_DIR="./FortytwoNode"
 PROJECT_DEBUG_DIR="$PROJECT_DIR/debug"
 PROJECT_MODEL_CACHE_DIR="$PROJECT_DIR/model_cache"
